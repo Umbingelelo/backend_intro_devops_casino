@@ -3,6 +3,9 @@
 // ============================================================
 const jwt = require('jsonwebtoken');
 
+// JWT_SECRET llega de la variable de entorno para no hardcodear secretos
+// en la imagen Docker. En producción se inyecta vía docker-compose.yml,
+// AWS Secrets Manager o un archivo .env excluido del repositorio.
 const JWT_SECRET = process.env.JWT_SECRET || 'cambiame';
 
 function firmar(payload) {

@@ -1,10 +1,18 @@
 -- ============================================================
 -- init.sql - Esquema del casino online
--- Postgres ejecuta este archivo la primera vez que el
--- contenedor arranca con un volumen de datos vacio
--- (carpeta /docker-entrypoint-initdb.d/).
--- Los usuarios demo se siembran desde el backend con bcrypt
--- real al arrancar (ver src/db/seed.js).
+--
+-- Postgres ejecuta automáticamente los archivos *.sql que se
+-- encuentren en /docker-entrypoint-initdb.d/ SOLO cuando el
+-- volumen de datos está vacío (primer arranque del contenedor).
+-- En reinicios posteriores este script NO vuelve a ejecutarse,
+-- por eso todas las sentencias usan IF NOT EXISTS / ON CONFLICT.
+--
+-- Cómo montarlo en docker-compose.yml:
+--   volumes:
+--     - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+--
+-- Los usuarios demo se siembran desde Node.js (ver src/db/seed.js)
+-- para poder hashear las contraseñas con bcrypt.
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS usuarios (

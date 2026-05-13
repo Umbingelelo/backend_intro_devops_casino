@@ -5,7 +5,7 @@ Backend del **Casino Online** — Experiencia 2 de la asignatura
 
 API REST en Node.js + Express con PostgreSQL como base de datos.
 
-> ⚠️ **Este repositorio NO incluye `Dockerfile`, `docker-compose.yml`
+> **Este repositorio NO incluye `Dockerfile`, `docker-compose.yml`
 > ni workflows de GitHub Actions.** Esos artefactos forman parte del
 > entregable de la **Evaluación Parcial 2** y deben construirlos los
 > estudiantes (frontend + backend + base de datos contenerizados,
@@ -46,7 +46,6 @@ casino-backend/
 ├── db/
 │   └── init.sql                 ← esquema (lo monta Postgres en /docker-entrypoint-initdb.d)
 ├── package.json
-├── .dockerignore
 ├── .gitignore
 └── .env.example
 ```
@@ -121,10 +120,60 @@ Requisitos: Node 20 y un Postgres accesible.
 
 ```bash
 cp .env.example .env          # ajustar credenciales
-npm install
+npm install                   # genera node_modules (y package-lock.json local, no se commitea)
 npm start
 # API disponible en http://localhost:3000
 ```
+
+---
+
+## Conceptos DevOps clave del código
+
+Los siguientes puntos son relevantes para la contenerización y despliegue en EC2.
+Busca los comentarios en el código fuente para mayor detalle.
+
+### 1. Configuración por variables de entorno (12-factor App)
+Toda la configuración sensible o que cambia entre ambientes (host de la BD,
+contraseña, JWT_SECRET, puerto) viene de variables de entorno, nunca
+hardcodeada. En Docker se inyectan con `-e`, en `docker-compose.yml` con la
+sección `environment:`, y en EC2 se pueden usar secretos de AWS.
+
+### 2. Endpoint `/health` y Docker HEALTHCHECK
+`GET /health` consulta la BD y responde `{ status: "ok" }` o `503`.
+Docker lo usa en el `HEALTHCHECK` del `Dockerfile`; los Load Balancers de AWS
+lo usan para enrutar tráfico solo hacia instancias/contenedores sanos.
+Deben configurar este endpoint como HEALTHCHECK en el Dockerfile del backend
+y como health check en el servicio de docker-compose.
+
+### 3. Binding a `0.0.0.0`
+El servidor escucha en `0.0.0.0` (todas las interfaces), no en `localhost`.
+Dentro de un contenedor, `localhost` solo aceptaría conexiones originadas
+dentro del mismo contenedor; `0.0.0.0` permite que el host (EC2) y otros
+contenedores puedan acceder.
+
+### 4. Reintentos de conexión a la BD (`esperarBD`)
+Cuando `docker-compose up` levanta varios servicios a la vez, el backend
+puede arrancar antes de que Postgres esté listo. `esperarBD()` reintenta
+hasta 30 veces con 2 s de espera. La solución definitiva es combinar esto
+con `depends_on: condition: service_healthy` y un `healthcheck` en el
+servicio `db` usando `pg_isready`.
+
+### 5. Inicialización del esquema (`db/init.sql`)
+Postgres ejecuta los archivos `.sql` en `/docker-entrypoint-initdb.d/`
+**solo si el volumen está vacío** (primer arranque). En reinicios
+posteriores el script no se vuelve a ejecutar. Por eso todas las
+sentencias DDL usan `IF NOT EXISTS`. Deben montar este archivo en el
+contenedor de la BD usando la sección `volumes:` del docker-compose.yml.
+
+### 6. Seed idempotente
+`seed.js` inserta usuarios demo al arrancar el backend usando
+`ON CONFLICT DO NOTHING`, por lo que es seguro ejecutarlo en cada
+reinicio del contenedor sin riesgo de duplicar datos ni fallar.
+
+### 7. Pool de conexiones
+`pg.Pool` mantiene hasta 10 conexiones abiertas simultáneamente.
+En producción este valor debe ajustarse según la instancia RDS/Postgres
+y la cantidad de réplicas del contenedor.
 
 ---
 
@@ -132,7 +181,7 @@ npm start
 
 El docente espera que ustedes:
 
-1. Construyan un **Dockerfile multi-stage** (`builder` con `npm ci`,
+1. Construyan un **Dockerfile multi-stage** (`builder` con `npm install`,
    `runtime` `node:20-alpine` con usuario no root).
 2. Definan en el `docker-compose.yml` los servicios `db`, `backend`
    (y agreguen el `frontend`) con:
@@ -142,8 +191,10 @@ El docente espera que ustedes:
    - `depends_on` con `condition: service_healthy` y un `healthcheck`
      en `db` (`pg_isready`).
    - Variables de entorno **inyectadas por compose**, sin hard-codear.
-3. Configuren un workflow en `.github/workflows/deploy.yml` activado
-   por `push` a la rama `deploy` que haga `build → push → deploy` en EC2.
+3. Configuren workflows en `.github/workflows/` que hagan
+   `build → push (ECR) → deploy` en EC2 al hacer push a la rama
+   correspondiente (en el **Ejercicio 2.5** se usa `main`; en la
+   **EP2** la pauta oficial pide la rama `deploy`).
 
 Lean la pauta oficial (`EP2_Instrucciones y Pauta_Encargo_Estudiante.pdf`)
 para los criterios completos.

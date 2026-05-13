@@ -1,4 +1,9 @@
 node_modules
+package-lock.json
 .env
 *.log
 coverage
+
+# Claude Code
+.claude/
+CLAUDE.md

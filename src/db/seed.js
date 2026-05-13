@@ -1,6 +1,8 @@
 // ============================================================
 // seed.js - Usuarios demo con hash bcrypt real.
-// Se ejecuta al arrancar el backend; es idempotente (NOT EXISTS).
+// Se ejecuta al arrancar el backend; es idempotente gracias a
+// ON CONFLICT DO NOTHING: si los usuarios ya existen (reinicios
+// del contenedor, redeploys) la operación no falla ni duplica datos.
 // ============================================================
 const bcrypt = require('bcryptjs');
 const { pool } = require('./pool');
