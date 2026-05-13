@@ -1,0 +1,57 @@
+services:
+  database:
+    container_name: database-casino
+    build: 
+      context: "./db"
+    environment:
+      - POSTGRES_USER=casino:${DB_USER}
+      - POSTGRES_PASSWORD=casino:${DB_PASS}
+      - POSTGRES_DB=casino_db  
+    networks: 
+      - casino-net
+    ports:
+      - "5432:5432"    
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+
+
+  back:
+    container_name: backend-casino
+    
+    build: 
+      context: "."
+
+
+    environment:
+      - DB_HOST=database 
+      - DB_USER=casino:${DB_USER} 
+      - DB_PASSWORD=casino:${DB_PASS} 
+      - DB_NAME=casino_db
+      - JWT_SECRET=dev:${JWT_SECRET}
+      - CORS_ORIGIN="*"
+    networks: 
+      - casino-net
+    ports:
+      - "3000:3000"    
+
+  front:
+    
+    container_name: frontend-casino
+    build: 
+      context: "../frontend_intro_devops_casino"    
+    
+    environment:
+      - BACKEND_HOST=back
+    networks: 
+      - casino-net
+    ports:
+      - "8000:80"   
+
+
+volumes:
+  pg-data:
+
+
+networks:
+  casino-net:
+    driver: "bridge"
