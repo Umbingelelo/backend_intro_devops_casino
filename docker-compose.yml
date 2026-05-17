@@ -12,13 +12,6 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d casino"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - casino-net
 
   backend:
     build: .
@@ -31,28 +24,8 @@ services:
       DB_PASSWORD: postgrespassword
       DB_NAME: casino
       PORT: 3000
-      JWT_SECRET: super_secreto_duoc
-      CORS_ORIGIN: "*"
     depends_on:
-      db:
-        condition: service_healthy
-    restart: always
-    networks:
-      - casino-net
-
-  frontend:
-    build: https://github.com/Moonlighpoio/frontend_intro_devops_casino.git
-    ports:
-      - "80:8080"
-    environment:
-      BACKEND_HOST: "backend:3000"
-    depends_on:
-      - backend
-    networks:
-      - casino-net
-
-networks:
-  casino-net:
+      - db
 
 volumes:
   pg_data:
