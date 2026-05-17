@@ -26,18 +26,18 @@ services:
       DB_PASSWORD: postgrespassword
       DB_NAME: casino
       PORT: 3000
+      JWT_SECRET: super_secreto_duoc
+      CORS_ORIGIN: "*"
     depends_on:
       - db
     networks:
       - casino-net
 
   frontend:
-    # EL TRUCO MAGICO: Docker descargará el frontend directo de tu otro repo
     build: https://github.com/Moonlighpoio/frontend_intro_devops_casino.git
     ports:
       - "80:8080"
     environment:
-      # Conecta por la red interna al servicio backend de arriba
       BACKEND_HOST: "backend:3000"
     depends_on:
       - backend
