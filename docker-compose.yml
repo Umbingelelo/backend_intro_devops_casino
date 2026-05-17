@@ -12,6 +12,8 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - casino-net
 
   backend:
     build: .
@@ -26,6 +28,24 @@ services:
       PORT: 3000
     depends_on:
       - db
+    networks:
+      - casino-net
+
+  frontend:
+    # EL TRUCO MAGICO: Docker descargará el frontend directo de tu otro repo
+    build: https://github.com/Moonlighpoio/frontend_intro_devops_casino.git
+    ports:
+      - "80:8080"
+    environment:
+      # Conecta por la red interna al servicio backend de arriba
+      BACKEND_HOST: "backend:3000"
+    depends_on:
+      - backend
+    networks:
+      - casino-net
+
+networks:
+  casino-net:
 
 volumes:
   pg_data:
