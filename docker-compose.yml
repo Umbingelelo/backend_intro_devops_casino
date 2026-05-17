@@ -12,6 +12,11 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d casino"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - casino-net
 
@@ -29,7 +34,9 @@ services:
       JWT_SECRET: super_secreto_duoc
       CORS_ORIGIN: "*"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    restart: always
     networks:
       - casino-net
 
