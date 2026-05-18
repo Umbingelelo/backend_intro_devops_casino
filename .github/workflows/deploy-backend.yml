@@ -42,7 +42,7 @@ jobs:
             docker pull ${{ secrets.DOCKER_USERNAME }}/casino-backend:latest
             docker stop casino-backend casino-db || true
             docker rm casino-backend casino-db || true
-            
+
             docker run -d --name casino-db --network casino_network -v casino_pgdata:/var/lib/postgresql/data -e POSTGRES_USER=casino_user -e POSTGRES_PASSWORD=casino_password -e POSTGRES_DB=casino_db postgres:15-alpine
-            
+
             docker run -d --name casino-backend --network casino_network -p 3000:3000 -e PORT=3000 -e DB_HOST=casino-db -e DB_PORT=5432 -e DB_USER=casino_user -e DB_PASSWORD=casino_password -e DB_NAME=casino_db -e CORS_ORIGIN=* ${{ secrets.DOCKER_USERNAME }}/casino-backend:latest
