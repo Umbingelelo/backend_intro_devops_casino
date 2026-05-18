@@ -1,0 +1,48 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - deploy
+
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v3
+
+      - name: Login en Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build y Push de la imagen
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/casino-backend:latest
+            ${{ secrets.DOCKER_USERNAME }}/casino-backend:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/casino-backend:v1.0.0
+
+      - name: Deploy a EC2 Privada
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.AWS_EC2_BACKEND_IP }}
+          proxy_host: ${{ secrets.AWS_EC2_FRONTEND_IP }}
+          proxy_username: ec2-user
+          proxy_key: ${{ secrets.AWS_SSH_KEY }}
+          username: ec2-user
+          key: ${{ secrets.AWS_SSH_KEY }}
+          script: |
+            docker network create casino_network || true
+            docker pull ${{ secrets.DOCKER_USERNAME }}/casino-backend:latest
+            docker stop casino-backend casino-db || true
+            docker rm casino-backend casino-db || true
+            
+            docker run -d --name casino-db --network casino_network -v casino_pgdata:/var/lib/postgresql/data -e POSTGRES_USER=casino_user -e POSTGRES_PASSWORD=casino_password -e POSTGRES_DB=casino_db postgres:15-alpine
+            
+            docker run -d --name casino-backend --network casino_network -p 3000:3000 -e PORT=3000 -e DB_HOST=casino-db -e DB_PORT=5432 -e DB_USER=casino_user -e DB_PASSWORD=casino_password -e DB_NAME=casino_db -e CORS_ORIGIN=* ${{ secrets.DOCKER_USERNAME }}/casino-backend:latest
